@@ -8,18 +8,15 @@
         #gameOver { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; display: none; font-size: 20px; }
         #controls { position: absolute; top: 10px; right: 10px; z-index: 100; }
         button { padding: 15px 25px; margin: 5px; font-size: 18px; cursor: pointer; border: none; border-radius: 5px; }
-        #mobileControls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
-        .mobileBtn { width: 70px; height: 70px; border: 3px solid white; border-radius: 50%; background: rgba(255,255,255,0.4); color: white; font-size: 24px; font-weight: bold; user-select: none; -webkit-user-select: none; }
-        #jumpBtn { width: 90px; height: 90px; background: rgba(255,69,180,0.8); font-size: 16px; }
-        .mobileBtn:active { background: rgba(255,255,255,0.8); transform: scale(0.95); }
-        #swipeArea { position: absolute; top: 0; left: 0; width: 100%; height: 60%; z-index: 50; }
+        #swipeArea { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; }
+        #mobileControls { display: none; }
     </style>
 </head>
 <body>
     <div id="ui">
         <div>Score: <span id="score">0</span></div>
         <div>Health: <span id="health">3</span></div>
-        <div>Swipe to move, double-tap to jump</div>
+        <div>Swipe left/right to move</div>
     </div>
     <div id="gameOver">
         <h2>Game Over!</h2>
@@ -31,13 +28,6 @@
         <button onclick="restartGame()">RESTART</button>
     </div>
     <div id="swipeArea"></div>
-    <div id="mobileControls">
-        <button class="mobileBtn" id="leftBtn">←</button>
-        <button class="mobileBtn" id="rightBtn">→</button>
-        <button class="mobileBtn" id="upBtn">↑</button>
-        <button class="mobileBtn" id="downBtn">↓</button>
-        <button class="mobileBtn" id="jumpBtn">JUMP</button>
-    </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -232,92 +222,39 @@
         });
         document.addEventListener('keyup', (e) => keys[e.code] = false);
         
-        // Mobile touch controls + swipe gestures
+        // Simple swipe controls - left/right only
         const mobileKeys = {};
-        let touchStartX = 0, touchStartY = 0;
+        let touchStartX = 0;
         
-        // Swipe controls on main screen
         const swipeArea = document.getElementById('swipeArea');
         
         swipeArea.addEventListener('touchstart', (e) => {
             e.preventDefault();
             touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
         });
         
         swipeArea.addEventListener('touchmove', (e) => {
             e.preventDefault();
             const touchX = e.touches[0].clientX;
-            const touchY = e.touches[0].clientY;
             const deltaX = touchX - touchStartX;
-            const deltaY = touchY - touchStartY;
             
-            // Reset all movement
+            // Reset movement
             mobileKeys['ArrowLeft'] = false;
             mobileKeys['ArrowRight'] = false;
-            mobileKeys['ArrowUp'] = false;
-            mobileKeys['ArrowDown'] = false;
             
-            // Swipe gestures (minimum 30px movement)
-            if (Math.abs(deltaX) > 30 || Math.abs(deltaY) > 30) {
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    // Horizontal swipe
-                    if (deltaX > 0) mobileKeys['ArrowRight'] = true;
-                    else mobileKeys['ArrowLeft'] = true;
-                } else {
-                    // Vertical swipe
-                    if (deltaY < 0) mobileKeys['ArrowUp'] = true;
-                    else mobileKeys['ArrowDown'] = true;
-                }
+            // Swipe left/right (minimum 20px movement)
+            if (Math.abs(deltaX) > 20) {
+                if (deltaX > 0) mobileKeys['ArrowRight'] = true;
+                else mobileKeys['ArrowLeft'] = true;
             }
         });
         
         swipeArea.addEventListener('touchend', (e) => {
             e.preventDefault();
-            // Stop all movement on touch end
             mobileKeys['ArrowLeft'] = false;
             mobileKeys['ArrowRight'] = false;
-            mobileKeys['ArrowUp'] = false;
-            mobileKeys['ArrowDown'] = false;
         });
-        
-        // Double tap to jump
-        let lastTap = 0;
-        swipeArea.addEventListener('touchend', (e) => {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTap;
-            if (tapLength < 500 && tapLength > 0) {
-                mobileKeys['Space'] = true;
-                setTimeout(() => mobileKeys['Space'] = false, 100);
-            }
-            lastTap = currentTime;
-        });
-        
-        function addTouchControls(btnId, keyCode) {
-            const btn = document.getElementById(btnId);
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                mobileKeys[keyCode] = true;
-            });
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                mobileKeys[keyCode] = false;
-            });
-            btn.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                mobileKeys[keyCode] = true;
-            });
-            btn.addEventListener('mouseup', (e) => {
-                e.preventDefault();
-                mobileKeys[keyCode] = false;
-            });
-        }
-        
-        addTouchControls('leftBtn', 'ArrowLeft');
-        addTouchControls('rightBtn', 'ArrowRight');
-        addTouchControls('upBtn', 'ArrowUp');
-        addTouchControls('downBtn', 'ArrowDown');
-        addTouchControls('jumpBtn', 'Space');
+
 
         function togglePause() {
             paused = !paused;
@@ -397,19 +334,14 @@
 
             requestAnimationFrame(animate);
 
-            // Player movement (keyboard + mobile)
+            // Player movement (left/right swipe only)
             const isPressed = (key) => keys[key] || mobileKeys[key];
             
             if (isPressed('ArrowLeft') && player.position.x > -4) player.position.x -= 0.1;
             if (isPressed('ArrowRight') && player.position.x < 4) player.position.x += 0.1;
-            if (isPressed('ArrowUp') && player.position.z > -10) player.position.z -= 0.1;
-            if (isPressed('ArrowDown') && player.position.z < 10) player.position.z += 0.1;
             
-            // Jump
-            if (isPressed('Space') && isGrounded) {
-                playerVelocityY = 0.2;
-                isGrounded = false;
-            }
+            // Auto-forward movement
+            if (player.position.z > -10) player.position.z -= 0.05;
 
             // Gravity
             player.position.y += playerVelocityY;
