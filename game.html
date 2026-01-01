@@ -8,16 +8,18 @@
         #gameOver { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; display: none; font-size: 20px; }
         #controls { position: absolute; top: 10px; right: 10px; z-index: 100; }
         button { padding: 15px 25px; margin: 5px; font-size: 18px; cursor: pointer; border: none; border-radius: 5px; }
-        #mobileControls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: 10px; }
-        .mobileBtn { width: 60px; height: 60px; border: 2px solid white; border-radius: 50%; background: rgba(255,255,255,0.3); color: white; font-size: 20px; font-weight: bold; }
-        #jumpBtn { width: 80px; height: 80px; background: rgba(255,69,180,0.7); }
+        #mobileControls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        .mobileBtn { width: 70px; height: 70px; border: 3px solid white; border-radius: 50%; background: rgba(255,255,255,0.4); color: white; font-size: 24px; font-weight: bold; user-select: none; -webkit-user-select: none; }
+        #jumpBtn { width: 90px; height: 90px; background: rgba(255,69,180,0.8); font-size: 16px; }
+        .mobileBtn:active { background: rgba(255,255,255,0.8); transform: scale(0.95); }
+        #swipeArea { position: absolute; top: 0; left: 0; width: 100%; height: 60%; z-index: 50; }
     </style>
 </head>
 <body>
     <div id="ui">
         <div>Score: <span id="score">0</span></div>
         <div>Health: <span id="health">3</span></div>
-        <div>Touch controls to move</div>
+        <div>Swipe to move, double-tap to jump</div>
     </div>
     <div id="gameOver">
         <h2>Game Over!</h2>
@@ -28,6 +30,7 @@
         <button id="pauseBtn" onclick="togglePause()">PAUSE</button>
         <button onclick="restartGame()">RESTART</button>
     </div>
+    <div id="swipeArea"></div>
     <div id="mobileControls">
         <button class="mobileBtn" id="leftBtn">←</button>
         <button class="mobileBtn" id="rightBtn">→</button>
@@ -229,8 +232,66 @@
         });
         document.addEventListener('keyup', (e) => keys[e.code] = false);
         
-        // Mobile touch controls
+        // Mobile touch controls + swipe gestures
         const mobileKeys = {};
+        let touchStartX = 0, touchStartY = 0;
+        
+        // Swipe controls on main screen
+        const swipeArea = document.getElementById('swipeArea');
+        
+        swipeArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        swipeArea.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touchX = e.touches[0].clientX;
+            const touchY = e.touches[0].clientY;
+            const deltaX = touchX - touchStartX;
+            const deltaY = touchY - touchStartY;
+            
+            // Reset all movement
+            mobileKeys['ArrowLeft'] = false;
+            mobileKeys['ArrowRight'] = false;
+            mobileKeys['ArrowUp'] = false;
+            mobileKeys['ArrowDown'] = false;
+            
+            // Swipe gestures (minimum 30px movement)
+            if (Math.abs(deltaX) > 30 || Math.abs(deltaY) > 30) {
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal swipe
+                    if (deltaX > 0) mobileKeys['ArrowRight'] = true;
+                    else mobileKeys['ArrowLeft'] = true;
+                } else {
+                    // Vertical swipe
+                    if (deltaY < 0) mobileKeys['ArrowUp'] = true;
+                    else mobileKeys['ArrowDown'] = true;
+                }
+            }
+        });
+        
+        swipeArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            // Stop all movement on touch end
+            mobileKeys['ArrowLeft'] = false;
+            mobileKeys['ArrowRight'] = false;
+            mobileKeys['ArrowUp'] = false;
+            mobileKeys['ArrowDown'] = false;
+        });
+        
+        // Double tap to jump
+        let lastTap = 0;
+        swipeArea.addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 500 && tapLength > 0) {
+                mobileKeys['Space'] = true;
+                setTimeout(() => mobileKeys['Space'] = false, 100);
+            }
+            lastTap = currentTime;
+        });
         
         function addTouchControls(btnId, keyCode) {
             const btn = document.getElementById(btnId);
